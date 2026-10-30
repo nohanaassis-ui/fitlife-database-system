@@ -1,0 +1,97 @@
+USE fitlife_db;
+
+-- 1. Listar todos os alunos com os seus respetivos planos e datas de vencimento
+SELECT a.nome AS aluno, p.nome AS plano, m.data_vencimento, m.status_pagamento
+FROM matriculas m
+INNER JOIN alunos a ON m.id_aluno = a.id_aluno
+INNER JOIN planos p ON m.id_plano = p.id_plano;
+
+-- 2. Contar o total de alunos por plano
+SELECT p.nome AS plano, COUNT(m.id_aluno) AS total_alunos
+FROM planos p
+LEFT JOIN matriculas m ON p.id_plano = m.id_plano
+GROUP BY p.id_plano, p.nome;
+
+-- 3. Calcular a receita total esperada por mês dos alunos ativos
+SELECT SUM(p.valor_mensal) AS receita_mensal_total
+FROM matriculas m
+INNER JOIN planos p ON m.id_plano = p.id_plano
+WHERE m.status_pagamento = 'Ativo';
+
+-- 4. Listar as modalidades de aulas e o nome dos respetivos instrutores
+SELECT ma.nome_aula, ma.horario, ma.vagas_maximas, i.nome AS instrutor
+FROM modalidades_aulas ma
+INNER JOIN instrutores i ON ma.id_instrutor = i.id_instrutor;
+
+-- 5. Listar agendamentos de aulas com nomes dos alunos e das modalidades
+SELECT a.nome AS aluno, ma.nome_aula, ag.data_reserva
+FROM agendamentos_aulas ag
+INNER JOIN alunos a ON ag.id_aluno = a.id_aluno
+INNER JOIN modalidades_aulas ma ON ag.id_modalidade = ma.id_modalidade
+ORDER BY ag.data_reserva DESC;
+
+-- 6. Exibir o histórico de avaliações físicas de um aluno específico com nome do instrutor
+SELECT a.nome AS aluno, af.data_avaliacao, af.peso, af.percentual_gordura, i.nome AS instrutor
+FROM avaliacoes_fisicas af
+INNER JOIN alunos a ON af.id_aluno = a.id_aluno
+INNER JOIN instrutores i ON af.id_instrutor = i.id_instrutor
+ORDER BY af.data_avaliacao DESC;
+
+-- 7. Alunos com matrículas prestes a vencer ou vencidas
+SELECT a.nome AS aluno, a.telefone, m.data_vencimento, m.status_pagamento
+FROM matriculas m
+INNER JOIN alunos a ON m.id_aluno = a.id_aluno
+WHERE m.data_vencimento <= CURDATE() OR m.status_pagamento = 'Pendente';
+
+-- 8. Média do percentual de gordura e peso de todos os alunos
+SELECT AVG(peso) AS media_peso_geral, AVG(percentual_gordura) AS media_gordura_geral
+FROM avaliacoes_fisicas;
+
+-- 9. Listar instrutores e a quantidade de aulas que ministram
+SELECT i.nome AS instrutor, COUNT(ma.id_modalidade) AS total_aulas
+FROM instrutores i
+LEFT JOIN modalidades_aulas ma ON i.id_instrutor = ma.id_instrutor
+GROUP BY i.id_instrutor, i.nome;
+
+-- 10. Listar modalidades com mais de 5 vagas reservadas/ocupadas
+SELECT ma.nome_aula, COUNT(ag.id_aluno) AS total_agendamentos
+FROM modalidades_aulas ma
+INNER JOIN agendamentos_aulas ag ON ma.id_modalidade = ag.id_modalidade
+GROUP BY ma.id_modalidade, ma.nome_aula
+HAVING COUNT(ag.id_aluno) > 5;
+
+-- 11. Alunos que realizaram mais de uma avaliação física
+SELECT a.nome AS aluno, COUNT(af.id_avaliacao) AS total_avaliacoes
+FROM alunos a
+INNER JOIN avaliacoes_fisicas af ON a.id_aluno = af.id_aluno
+GROUP BY a.id_aluno, a.nome
+HAVING COUNT(af.id_avaliacao) > 1;
+
+-- 12. Listar os planos mais caros que a média de todos os planos
+SELECT nome, valor_mensal
+FROM planos
+WHERE valor_mensal > (SELECT AVG(valor_mensal) FROM planos);
+
+-- 13. Média de peso e percentual de gordura dos alunos por instrutor
+SELECT i.nome AS instrutor, AVG(af.peso) AS media_peso, AVG(af.percentual_gordura) AS media_gordura
+FROM avaliacoes_fisicas af
+INNER JOIN instrutores i ON af.id_instrutor = i.id_instrutor
+GROUP BY i.id_instrutor, i.nome;
+
+-- 14. Listar alunos que não possuem nenhum agendamento de aula
+SELECT a.nome AS aluno, a.email
+FROM alunos a
+LEFT JOIN agendamentos_aulas ag ON a.id_aluno = ag.id_aluno
+WHERE ag.id_aluno IS NULL;
+
+-- 15. Relatório geral de alunos, com plano, status e total de aulas agendadas
+SELECT 
+    a.nome AS aluno,
+    p.nome AS plano,
+    m.status_pagamento,
+    COUNT(ag.id_modalidade) AS total_aulas_agendadas
+FROM alunos a
+INNER JOIN matriculas m ON a.id_aluno = m.id_aluno
+INNER JOIN planos p ON m.id_plano = p.id_plano
+LEFT JOIN agendamentos_aulas ag ON a.id_aluno = ag.id_aluno
+GROUP BY a.id_aluno, a.nome, p.nome, m.status_pagamento;
