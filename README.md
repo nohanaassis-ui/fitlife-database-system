@@ -1,3 +1,4 @@
+
 # Sistema de Gestão Academia FitLife
 
 Sistema de banco de dados relacional desenvolvido para gerenciamento operacional de academias e acompanhamento de alunos.
@@ -12,7 +13,7 @@ Sistema de banco de dados relacional desenvolvido para gerenciamento operacional
 - [Modelagem Relacional (Diagrama EER)](#modelagem-relacional-diagrama-eer)
 - [Estrutura do Banco de Dados](#estrutura-do-banco-de-dados)
 - [Consultas SQL Implementadas](#consultas-sql-implementadas)
-- [Backup e Restauração (Dump)](#backup-e-restauração-dump)
+- [Backup e Restauração de Dados (Dump)](#backup-e-restauração-de-dados-dump)
 - [Como Executar o Projeto](#como-executar-o-projeto)
 
 ---
@@ -74,12 +75,32 @@ O projeto dispõe de 15 consultas analíticas cobrindo:
 
 ---
 
-## Backup e Restauração (Dump)
+## Backup e Restauração de Dados (Dump)
 
-Para garantir a persistência dos dados e facilitar a homologação do projeto, utilize os utilitários nativos do MySQL via linha de comando (CLI) ou interface gráfica.
+A estratégia de backup foi elaborada para garantir a **integridade referencial**, **portabilidade de caracteres (UTF-8)** e **rastreabilidade das transações** do banco `fitlife_db`.
 
-### 1. Gerando o Backup (Dump)
-Para exportar a estrutura completa (DDL) e os dados inseridos (DML) para um arquivo `.sql`:
+### 1. Parâmetros Técnicos do Utilitário `mysqldump`
+
+Para a geração do backup completo via linha de comando (CLI), utilizam-se parâmetros avançados que asseguram a recriação limpa das tabelas e previnem falhas de validação de chaves estrangeiras durante a importação:
+
+- `--routines`: Inclui Stored Procedures e Functions no arquivo de backup.
+- `--triggers`: Preserva os gatilhos configurados nas tabelas.
+- `--events`: Preserva eventos agendados no SGBD.
+- `--add-drop-table`: Adiciona a cláusula `DROP TABLE IF EXISTS` antes de cada `CREATE TABLE`.
+- `--single-transaction`: Executa o backup em uma única transação (para tabelas `InnoDB`), garantindo a consistência sem travar a escrita no banco (*table locking*).
+- `--default-character-set=utf8mb4`: Mantém a codificação correta de acentuação e caracteres especiais em português.
+
+### 2. Geração do Backup via Terminal (CLI)
+
+#### A. Dump Completo (Estrutura DDL + Dados DML)
+Executar no terminal do sistema operacional (substituindo `root` pelo usuário configurado no MySQL):
 
 ```bash
-mysqldump -u [usuario] -p fitlife_db > dump_fitlife_db.sql
+mysqldump -u root -p \
+  --default-character-set=utf8mb4 \
+  --routines \
+  --triggers \
+  --events \
+  --single-transaction \
+  --add-drop-table \
+  fitlife_db > dump_fitlife_db_completo.sql
